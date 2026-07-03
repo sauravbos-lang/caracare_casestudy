@@ -1,0 +1,113 @@
+version: 2
+
+models:
+  # Dimension Tables
+  - name: dim_patient
+    description: "Patient dimension containing unique patient records"
+    columns:
+      - name: patient_id
+        description: "Unique patient identifier - PRIMARY KEY"
+        tests:
+          - unique
+          - not_null
+      - name: patient_email
+        description: "Patient email address"
+      - name: date_of_birth
+        description: "Patient date of birth"
+        tests:
+          - not_null
+
+  - name: dim_doctor
+    description: "Doctor dimension with unique doctor profiles"
+    columns:
+      - name: doctor_id
+        description: "MD5 hash surrogate key - PRIMARY KEY"
+        tests:
+          - unique
+          - not_null
+      - name: prescribing_doctor
+        description: "Doctor's name"
+        tests:
+          - not_null
+      - name: doctor_specialty
+        description: "Medical specialty"
+      - name: doctor_city
+        description: "City where doctor practices"
+
+  - name: dim_insurance
+    description: "Insurance provider dimension"
+    columns:
+      - name: insurance_id
+        description: "MD5 hash surrogate key - PRIMARY KEY"
+        tests:
+          - unique
+          - not_null
+      - name: insurance_name
+        description: "Insurance provider name"
+        tests:
+          - not_null
+      - name: insurance_type
+        description: "Type of insurance plan"
+
+  # Fact Tables
+  - name: fact_prescription
+    description: "Prescription transactions fact table"
+    columns:
+      - name: prescription_id
+        description: "Unique prescription identifier - PRIMARY KEY"
+        tests:
+          - unique
+          - not_null
+      - name: patient_id
+        description: "Foreign key to dim_patient"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_patient')
+              field: patient_id
+      - name: doctor_id
+        description: "Foreign key to dim_doctor"
+        tests:
+          - not_null
+      - name: insurance_id
+        description: "Foreign key to dim_insurance"
+        tests:
+          - not_null
+      - name: prescription_start
+        description: "Prescription start date"
+        tests:
+          - not_null
+      - name: prescription_end
+        description: "Prescription end date"
+      - name: prescription_status
+        description: "Current prescription status"
+      - name: represcription
+        description: "Boolean indicating if this is a represcription"
+      - name: represcription_date
+        description: "Date of represcription if applicable"
+
+  - name: fact_touchpoint
+    description: "Patient touchpoint events fact table"
+    columns:
+      - name: touchpoint_id
+        description: "MD5 hash surrogate key - PRIMARY KEY"
+        tests:
+          - unique
+          - not_null
+      - name: prescription_id
+        description: "Foreign key to fact_prescription"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('fact_prescription')
+              field: prescription_id
+      - name: touchpoint_date
+        description: "Date of touchpoint event"
+        tests:
+          - not_null
+      - name: touchpoint_type
+        description: "Type of interaction"
+      - name: touchpoint_channel
+        description: "Communication channel used"
+      - name: touchpoint_outcome
+        description: "Outcome of the touchpoint"

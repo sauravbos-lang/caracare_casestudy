@@ -1,0 +1,23 @@
+# Databricks connection profile for dbt
+# Place this file in ~/.dbt/ directory or specify path with --profiles-dir
+
+databricks:
+  target: dev
+  outputs:
+    dev:
+      type: databricks
+      catalog: caracare_casestudy
+      schema: 00_bronze
+      host: <your-databricks-host>.cloud.databricks.com
+      http_path: /sql/1.0/warehouses/<warehouse-id>
+      token: <your-personal-access-token>
+      threads: 4
+      
+    prod:
+      type: databricks
+      catalog: caracare_casestudy
+      schema: 00_bronze
+      host: <your-databricks-host>.cloud.databricks.com
+      http_path: /sql/1.0/warehouses/<warehouse-id>
+      token: <your-personal-access-token>
+      threads: 8

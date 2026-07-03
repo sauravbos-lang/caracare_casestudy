@@ -1,0 +1,28 @@
+# dbt
+target/
+dbt_packages/
+logs/
+
+# Python
+*.pyc
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+ENV/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Databricks
+.databrickscfg

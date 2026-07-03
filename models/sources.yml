@@ -1,0 +1,47 @@
+version: 2
+
+sources:
+  - name: caracare_raw
+    database: caracare_casestudy
+    schema: caracare_raw
+    description: "Raw source data from Caracare system"
+    tables:
+      - name: caracare_raw
+        description: "Flat table containing all prescription, patient, doctor, insurance, and touchpoint data"
+        columns:
+          - name: patient_id
+            description: "Unique patient identifier"
+          - name: patient_email
+            description: "Patient email address"
+          - name: date_of_birth
+            description: "Patient date of birth"
+          - name: prescribing_doctor
+            description: "Name of prescribing doctor"
+          - name: doctor_specialty
+            description: "Doctor's medical specialty"
+          - name: doctor_city
+            description: "City where doctor practices"
+          - name: insurance_name
+            description: "Insurance provider name"
+          - name: insurance_type
+            description: "Type of insurance plan"
+          - name: prescription_id
+            description: "Unique prescription identifier"
+          - name: prescription_start
+            description: "Prescription start date"
+          - name: prescription_end
+            description: "Prescription end date"
+          - name: prescription_status
+            description: "Current prescription status"
+          - name: represcription
+            description: "Whether prescription was refilled (ja/nein)"
+          - name: represcription_date
+            description: "Date of represcription"
+          - name: touchpoint_date
+            description: "Date of patient touchpoint"
+          - name: touchpoint_type
+            description: "Type of touchpoint interaction"
+          - name: touchpoint_channel
+            description: "Communication channel used"
+          - name: touchpoint_outcome
+            description: "Outcome of the touchpoint"
