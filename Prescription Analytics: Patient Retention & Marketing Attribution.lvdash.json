@@ -356,7 +356,7 @@
             "x": 0,
             "y": 3,
             "width": 12,
-            "height": 3
+            "height": 5
           }
         }
       ],
@@ -387,7 +387,7 @@
             "x": 0,
             "y": 0,
             "width": 12,
-            "height": 3
+            "height": 4
           }
         },
         {
@@ -420,7 +420,8 @@
               "version": 2,
               "frame": {
                 "title": "Retention Performance",
-                "showTitle": true
+                "showTitle": true,
+                "showDescription": false
               },
               "widgetType": "table",
               "encodings": {
@@ -455,7 +456,7 @@
           },
           "position": {
             "x": 0,
-            "y": 9,
+            "y": 10,
             "width": 12,
             "height": 3
           }
@@ -487,7 +488,8 @@
               "frame": {
                 "description": "Percentage of patients who renewed their prescription each month",
                 "title": "Monthly Patient Retention Rate",
-                "showTitle": true
+                "showTitle": true,
+                "showDescription": true
               },
               "widgetType": "line",
               "encodings": {
@@ -511,7 +513,7 @@
           },
           "position": {
             "x": 0,
-            "y": 3,
+            "y": 4,
             "width": 12,
             "height": 6
           }
@@ -623,7 +625,7 @@
             "x": 0,
             "y": 0,
             "width": 12,
-            "height": 4
+            "height": 29
           }
         },
         {
@@ -653,7 +655,8 @@
               "frame": {
                 "description": "Number of patient renewals attributed to each touchpoint type",
                 "title": "Attributed Renewals by Touchpoint Type",
-                "showTitle": true
+                "showTitle": true,
+                "showDescription": true
               },
               "widgetType": "bar",
               "encodings": {
@@ -680,7 +683,7 @@
           },
           "position": {
             "x": 0,
-            "y": 4,
+            "y": 29,
             "width": 12,
             "height": 6
           }
@@ -782,7 +785,7 @@
           },
           "position": {
             "x": 0,
-            "y": 10,
+            "y": 35,
             "width": 12,
             "height": 5
           }
@@ -795,45 +798,59 @@
   "uiSettings": {
     "theme": {
       "canvasBackgroundColor": {
-        "light": "#F8F9FA",
-        "dark": "#1A1D21"
+        "light": "#F8FAFC",
+        "dark": "#0F172A"
       },
       "widgetBackgroundColor": {
         "light": "#FFFFFF",
-        "dark": "#2D3139"
+        "dark": "#1E293B"
+      },
+      "widgetBorderColor": {
+        "light": "#E2E8F0",
+        "dark": "#334155"
       },
       "fontColor": {
-        "light": "#1A1A1A",
-        "dark": "#F5F5F5"
+        "light": "#1E293B",
+        "dark": "#F1F5F9"
       },
       "selectionColor": {
-        "light": "#1E88E5",
-        "dark": "#42A5F5"
+        "light": "#3B82F6",
+        "dark": "#60A5FA"
       },
       "visualizationColors": [
-        "#1E88E5",
-        "#43A047",
-        "#FB8C00",
-        "#E53935",
-        "#8E24AA",
-        "#00ACC1",
-        "#FDD835",
-        "#6D4C41"
+        "#1E40AF",
+        "#3B82F6",
+        "#60A5FA",
+        "#93C5FD",
+        "#DBEAFE",
+        "#10B981",
+        "#F59E0B",
+        "#EF4444"
       ],
       "widgetHeaderAlignment": "LEFT",
       "fontFamily": "Poppins",
       "widgetPadding": 16,
+      "widgetMargin": 12,
       "widgetCornerRadius": 8,
       "widgetShadow": 10,
       "fontSettings": {
         "base": {
           "fontFamily": "Poppins",
-          "fontSize": 14,
+          "fontColor": {
+            "light": "#475569",
+            "dark": "#CBD5E1"
+          },
+          "fontSize": 12,
           "fontWeight": 400
         },
         "widgetTitle": {
           "fontFamily": "Poppins",
-          "fontSize": 16,
+          "textCase": "TEXT_CASE_UNSPECIFIED",
+          "fontColor": {
+            "light": "#0F172A",
+            "dark": "#F1F5F9"
+          },
+          "fontSize": 14,
           "fontWeight": 600
         },
         "widgetDescription": {
@@ -844,14 +861,30 @@
         "fieldTitle": {
           "fontFamily": "Poppins",
           "textCase": "TEXT_CASE_UPPERCASE",
-          "fontSize": 12,
+          "fontColor": {
+            "light": "#64748B",
+            "dark": "#94A3B8"
+          },
+          "fontSize": 10,
           "fontWeight": 500
         },
         "fieldValue": {
           "fontFamily": "Poppins",
-          "fontSize": 18,
-          "fontWeight": 600
+          "fontColor": {
+            "light": "#1E40AF",
+            "dark": "#60A5FA"
+          },
+          "fontSize": 13,
+          "fontWeight": 500
         }
+      },
+      "gridLineColor": {
+        "light": "#F1F5F9",
+        "dark": "#334155"
+      },
+      "axisLineColor": {
+        "light": "#E2E8F0",
+        "dark": "#475569"
       }
     },
     "applyModeEnabled": false
