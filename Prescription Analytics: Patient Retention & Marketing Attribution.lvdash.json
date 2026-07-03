@@ -668,6 +668,9 @@
                   "scale": {
                     "type": "categorical"
                   }
+                },
+                "label": {
+                  "show": true
                 }
               },
               "data": {
@@ -800,8 +803,8 @@
         "dark": "#2D3139"
       },
       "fontColor": {
-        "light": "#212121",
-        "dark": "#E0E0E0"
+        "light": "#1A1A1A",
+        "dark": "#F5F5F5"
       },
       "selectionColor": {
         "light": "#1E88E5",
@@ -818,10 +821,38 @@
         "#6D4C41"
       ],
       "widgetHeaderAlignment": "LEFT",
-      "fontFamily": "Inter",
+      "fontFamily": "Poppins",
       "widgetPadding": 16,
       "widgetCornerRadius": 8,
-      "widgetShadow": 10
+      "widgetShadow": 10,
+      "fontSettings": {
+        "base": {
+          "fontFamily": "Poppins",
+          "fontSize": 14,
+          "fontWeight": 400
+        },
+        "widgetTitle": {
+          "fontFamily": "Poppins",
+          "fontSize": 16,
+          "fontWeight": 600
+        },
+        "widgetDescription": {
+          "fontFamily": "Poppins",
+          "fontSize": 12,
+          "fontWeight": 400
+        },
+        "fieldTitle": {
+          "fontFamily": "Poppins",
+          "textCase": "TEXT_CASE_UPPERCASE",
+          "fontSize": 12,
+          "fontWeight": 500
+        },
+        "fieldValue": {
+          "fontFamily": "Poppins",
+          "fontSize": 18,
+          "fontWeight": 600
+        }
+      }
     },
     "applyModeEnabled": false
   }
