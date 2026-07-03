@@ -1,0 +1,828 @@
+{
+  "datasets": [
+    {
+      "name": "key_metrics",
+      "displayName": "Overall Performance Metrics",
+      "queryLines": [
+        "-- Overall patient-level metrics\n",
+        "SELECT\n",
+        "  COUNT(DISTINCT patient_id) AS total_patients,\n",
+        "  COUNT(DISTINCT\n",
+        "    CASE\n",
+        "      WHEN represcription = TRUE THEN patient_id\n",
+        "    END\n",
+        "  ) AS represcribed_patients,\n",
+        "  ROUND(\n",
+        "    CAST(\n",
+        "      COUNT(DISTINCT\n",
+        "        CASE\n",
+        "          WHEN represcription = TRUE THEN patient_id\n",
+        "        END\n",
+        "      ) AS DOUBLE\n",
+        "    )\n",
+        "      / COUNT(DISTINCT patient_id)\n",
+        "      * 100,\n",
+        "    2\n",
+        "  ) AS overall_represcription_rate_pct,\n",
+        "  COUNT(*) AS total_prescriptions,\n",
+        "  SUM(\n",
+        "    CASE\n",
+        "      WHEN represcription = TRUE THEN 1\n",
+        "      ELSE 0\n",
+        "    END\n",
+        "  ) AS total_represcriptions\n",
+        "FROM\n",
+        "  caracare_casestudy.01_silver.fact_prescription"
+      ]
+    },
+    {
+      "name": "touchpoint_type_summary",
+      "displayName": "Marketing Touchpoint Performance",
+      "queryLines": [
+        "-- Summary by touchpoint type using last-touch attribution\n",
+        "WITH last_touchpoints AS (\n",
+        "  SELECT\n",
+        "    t.touchpoint_type,\n",
+        "    p.patient_id,\n",
+        "    ROW_NUMBER() OVER (\n",
+        "        PARTITION BY p.patient_id, p.prescription_id\n",
+        "        ORDER BY t.touchpoint_date DESC\n",
+        "      ) AS touch_rank\n",
+        "  FROM\n",
+        "    caracare_casestudy.01_silver.fact_touchpoint t\n",
+        "      JOIN caracare_casestudy.01_silver.fact_prescription p\n",
+        "        ON t.prescription_id = p.prescription_id\n",
+        "  WHERE\n",
+        "    p.represcription = TRUE\n",
+        "    AND t.touchpoint_date <= COALESCE(p.represcription_date, p.prescription_end)\n",
+        ")\n",
+        "SELECT\n",
+        "  touchpoint_type,\n",
+        "  COUNT(DISTINCT patient_id) AS total_attributed_represcriptions,\n",
+        "  ROUND(\n",
+        "    COUNT(DISTINCT patient_id)\n",
+        "      * 100.0\n",
+        "      / (\n",
+        "        SELECT\n",
+        "          COUNT(DISTINCT patient_id)\n",
+        "        FROM\n",
+        "          caracare_casestudy.01_silver.fact_prescription\n",
+        "        WHERE\n",
+        "          represcription = TRUE\n",
+        "      ),\n",
+        "    2\n",
+        "  ) AS total_attribution_pct\n",
+        "FROM\n",
+        "  last_touchpoints\n",
+        "WHERE\n",
+        "  touch_rank = 1\n",
+        "GROUP BY\n",
+        "  touchpoint_type\n",
+        "ORDER BY\n",
+        "  total_attributed_represcriptions DESC"
+      ]
+    },
+    {
+      "name": "monthly_represcription_rate",
+      "displayName": "Monthly Retention Trends",
+      "queryLines": [
+        "-- Monthly patient retention rate\n",
+        "SELECT\n",
+        "  DATE_TRUNC('MONTH', prescription_start) AS month,\n",
+        "  COUNT(DISTINCT\n",
+        "    CASE\n",
+        "      WHEN represcription = TRUE THEN patient_id\n",
+        "    END\n",
+        "  ) AS represcribed_patients,\n",
+        "  COUNT(DISTINCT patient_id) AS total_patients,\n",
+        "  ROUND(\n",
+        "    CAST(\n",
+        "      COUNT(DISTINCT\n",
+        "        CASE\n",
+        "          WHEN represcription = TRUE THEN patient_id\n",
+        "        END\n",
+        "      ) AS DOUBLE\n",
+        "    )\n",
+        "      / NULLIF(COUNT(DISTINCT patient_id), 0)\n",
+        "      * 100,\n",
+        "    2\n",
+        "  ) AS represcription_rate_pct\n",
+        "FROM\n",
+        "  caracare_casestudy.01_silver.fact_prescription\n",
+        "WHERE\n",
+        "  prescription_start IS NOT NULL\n",
+        "GROUP BY\n",
+        "  DATE_TRUNC('MONTH', prescription_start)\n",
+        "ORDER BY\n",
+        "  month"
+      ]
+    },
+    {
+      "name": "touchpoint_attribution",
+      "displayName": "Detailed Marketing Attribution",
+      "queryLines": [
+        "-- Last-touch attribution for re-prescriptions with timing\n",
+        "WITH last_touchpoints AS (\n",
+        "  SELECT\n",
+        "    t.touchpoint_type,\n",
+        "    t.touchpoint_channel,\n",
+        "    t.touchpoint_outcome,\n",
+        "    p.patient_id,\n",
+        "    p.prescription_id,\n",
+        "    p.prescription_start,\n",
+        "    t.touchpoint_date,\n",
+        "    DATEDIFF(t.touchpoint_date, p.prescription_start) AS days_after_rx_start,\n",
+        "    ROW_NUMBER() OVER (\n",
+        "        PARTITION BY p.patient_id, p.prescription_id\n",
+        "        ORDER BY t.touchpoint_date DESC\n",
+        "      ) AS touch_rank\n",
+        "  FROM\n",
+        "    caracare_casestudy.01_silver.fact_touchpoint t\n",
+        "      JOIN caracare_casestudy.01_silver.fact_prescription p\n",
+        "        ON t.prescription_id = p.prescription_id\n",
+        "  WHERE\n",
+        "    p.represcription = TRUE\n",
+        "    AND t.touchpoint_date <= COALESCE(p.represcription_date, p.prescription_end)\n",
+        ")\n",
+        "SELECT\n",
+        "  touchpoint_type,\n",
+        "  touchpoint_channel,\n",
+        "  touchpoint_outcome,\n",
+        "  COUNT(DISTINCT patient_id) AS attributed_represcriptions,\n",
+        "  ROUND(\n",
+        "    COUNT(DISTINCT patient_id)\n",
+        "      * 100.0\n",
+        "      / (\n",
+        "        SELECT\n",
+        "          COUNT(DISTINCT patient_id)\n",
+        "        FROM\n",
+        "          caracare_casestudy.01_silver.fact_prescription\n",
+        "        WHERE\n",
+        "          represcription = TRUE\n",
+        "      ),\n",
+        "    2\n",
+        "  ) AS attribution_pct,\n",
+        "  ROUND(AVG(days_after_rx_start), 1) AS avg_days_after_rx_start\n",
+        "FROM\n",
+        "  last_touchpoints\n",
+        "WHERE\n",
+        "  touch_rank = 1\n",
+        "GROUP BY\n",
+        "  touchpoint_type,\n",
+        "  touchpoint_channel,\n",
+        "  touchpoint_outcome\n",
+        "ORDER BY\n",
+        "  attributed_represcriptions DESC"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "ffeff1e1",
+      "displayName": "Overview",
+      "layout": [
+        {
+          "widget": {
+            "name": "overall_represcription_rate",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "key_metrics",
+                  "fields": [
+                    {
+                      "name": "overall_represcription_rate_pct",
+                      "expression": "`overall_represcription_rate_pct`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "description": "Percentage of patients who renewed their prescription",
+                "title": "Patient Retention Rate",
+                "showTitle": true
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "overall_represcription_rate_pct",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 1
+                    }
+                  },
+                  "formatTemplate": "{{ @formatted }}%"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 4,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "total_prescriptions",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "key_metrics",
+                  "fields": [
+                    {
+                      "name": "total_patients",
+                      "expression": "`total_patients`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "Total Patients",
+                "showTitle": true
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "total_patients",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 0
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 0,
+            "width": 4,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "total_represcriptions",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "key_metrics",
+                  "fields": [
+                    {
+                      "name": "represcribed_patients",
+                      "expression": "`represcribed_patients`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "Retained Patients",
+                "showTitle": true
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "represcribed_patients",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 0
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 8,
+            "y": 0,
+            "width": 4,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "overview_intro",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Executive Summary\n",
+                "\n",
+                "This dashboard provides insights into **patient retention** and **marketing effectiveness** for prescription renewals.\n",
+                "\n",
+                "### Key Business Questions:\n",
+                "1. **Patient Retention**: What percentage of patients renew their prescriptions, and how does this trend over time?\n",
+                "2. **Marketing Attribution**: Which marketing touchpoints drive prescription renewals?\n",
+                "\n",
+                "### Navigation:\n",
+                "* **Patient Retention Analysis** - Detailed monthly retention trends\n",
+                "* **Marketing Attribution** - Campaign and channel performance analysis"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 3,
+            "width": 12,
+            "height": 3
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "patient_retention",
+      "displayName": "Patient Retention Analysis",
+      "layout": [
+        {
+          "widget": {
+            "name": "retention_intro",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Understanding Patient Retention\n",
+                "\n",
+                "**Business Context**: Patient retention measures how many patients continue their prescribed treatment by getting re-prescriptions. High retention indicates effective treatment outcomes and patient satisfaction.\n",
+                "\n",
+                "**Metrics**:\n",
+                "* **Retention Rate** = (Patients who renewed ÷ Total patients) × 100%\n",
+                "* Calculated at the **patient level** (not prescription level) to avoid double-counting\n",
+                "* Tracked monthly to identify seasonal trends and program effectiveness"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "retention_kpis",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "key_metrics",
+                  "fields": [
+                    {
+                      "name": "total_patients",
+                      "expression": "`total_patients`"
+                    },
+                    {
+                      "name": "represcribed_patients",
+                      "expression": "`represcribed_patients`"
+                    },
+                    {
+                      "name": "overall_represcription_rate_pct",
+                      "expression": "`overall_represcription_rate_pct`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "Retention Performance",
+                "showTitle": true
+              },
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "total_patients",
+                    "displayName": "Total Patients"
+                  },
+                  {
+                    "fieldName": "represcribed_patients",
+                    "displayName": "Retained Patients"
+                  },
+                  {
+                    "fieldName": "overall_represcription_rate_pct",
+                    "format": {
+                      "type": "number-plain",
+                      "abbreviation": "none",
+                      "decimalPlaces": {
+                        "type": "exact",
+                        "places": 1
+                      }
+                    },
+                    "displayName": "Retention Rate %",
+                    "formatTemplate": "{{ @formatted }}%"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 9,
+            "width": 12,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "monthly_retention_chart",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "monthly_represcription_rate",
+                  "fields": [
+                    {
+                      "name": "month",
+                      "expression": "`month`"
+                    },
+                    {
+                      "name": "represcription_rate_pct",
+                      "expression": "`represcription_rate_pct`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "description": "Percentage of patients who renewed their prescription each month",
+                "title": "Monthly Patient Retention Rate",
+                "showTitle": true
+              },
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "month",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "represcription_rate_pct",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 3,
+            "width": 12,
+            "height": 6
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "marketing_attribution",
+      "displayName": "Marketing Attribution",
+      "layout": [
+        {
+          "widget": {
+            "name": "attribution_intro",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Business Question\n",
+                "**\"Which touchpoint contributes the most to re-prescription?\"**\n",
+                "\n",
+                "---\n",
+                "\n",
+                "## Analytical Approach: Last-Touch Attribution\n",
+                "\n",
+                "### Methodology\n",
+                "We use a **last-touch attribution model** that credits the final marketing interaction before a patient renews their prescription:\n",
+                "\n",
+                "1. **Identify renewal events**: Select all prescriptions where `represcription = TRUE`\n",
+                "2. **Find eligible touchpoints**: For each renewal, identify all touchpoints between `prescription_start` and `represcription_date`\n",
+                "3. **Attribute to last touchpoint**: Use window function to rank touchpoints by date (descending) and credit the most recent one\n",
+                "4. **Aggregate results**: Count distinct patients attributed to each touchpoint type and calculate percentage\n",
+                "\n",
+                "### SQL Logic\n",
+                "```sql\n",
+                "ROW_NUMBER() OVER (\n",
+                "  PARTITION BY patient_id, prescription_id\n",
+                "  ORDER BY touchpoint_date DESC  -- Last touch!\n",
+                ") = 1\n",
+                "```\n",
+                "\n",
+                "### Why Last-Touch?\n",
+                "* Identifies the **immediate conversion driver** before renewal\n",
+                "* Answers: \"What was the final nudge that drove the patient to renew?\"\n",
+                "* Common in performance marketing to optimize conversion tactics\n",
+                "\n",
+                "---\n",
+                "\n",
+                "## Key Findings\n",
+                "Based on current data:\n",
+                "* **CHECK_IN_CALL** (66.7%) - Phone calls are the dominant last touchpoint\n",
+                "* **EMAIL_NUDGE** (33.3%) - Email reminders also drive conversions\n",
+                "* Average timing: 65-75 days after initial prescription\n",
+                "\n",
+                "---\n",
+                "\n",
+                "## Limitations & Caveats\n",
+                "\n",
+                "### 1. Correlation ≠ Causation\n",
+                "**Issue**: The last touchpoint may have occurred *after* the patient decided to renew.\n",
+                "* A patient might schedule a renewal, then receive a routine check-in call\n",
+                "* The call didn't cause the renewal—it just happened to be last\n",
+                "\n",
+                "### 2. Recency Bias\n",
+                "**Issue**: Over-credits the final interaction, ignores earlier influential touchpoints.\n",
+                "* Example: An educational email campaign (first-touch) might have been more influential than the final reminder call, but gets zero credit\n",
+                "\n",
+                "### 3. Selection Bias\n",
+                "**Issue**: Only analyzes patients who renewed—no comparison group.\n",
+                "* We don't know: Did non-renewed patients receive different touchpoints?\n",
+                "* Without this, we can't say touchpoints *caused* renewals\n",
+                "\n",
+                "### 4. Missing Confounders\n",
+                "**Issue**: Doesn't control for patient characteristics that drive renewal.\n",
+                "* Factors not measured: disease severity, medication effectiveness, doctor relationship, insurance coverage, socioeconomic status\n",
+                "* High-risk patients may naturally renew regardless of touchpoints\n",
+                "\n",
+                "### 5. Multi-Touch Journey Ignored\n",
+                "**Issue**: Patients typically interact multiple times across channels.\n",
+                "* Attributing 100% credit to one touchpoint oversimplifies the customer journey\n",
+                "* Alternative models (linear, time-decay, position-based) distribute credit more fairly\n",
+                "\n",
+                "### 6. No Counterfactual\n",
+                "**Issue**: We don't know what would have happened without touchpoints.\n",
+                "* Would patients have renewed anyway?\n",
+                "* Requires A/B testing: randomly assign patients to \"touchpoint\" vs. \"no touchpoint\" groups\n",
+                "\n",
+                "---\n",
+                "\n",
+                "## Recommendations for Improvement\n",
+                "\n",
+                "### Immediate (use existing data)\n",
+                "1. **Compare with first-touch attribution** (already in `02_gold.touchpoint_attribution_first_touch`)\n",
+                "2. **Analyze non-renewals**: Which touchpoints did patients who *didn't* renew receive?\n",
+                "3. **Segment by patient characteristics**: Does attribution differ by age, insurance type, or doctor?\n",
+                "\n",
+                "### Medium-term (additional analysis)\n",
+                "4. **Multi-touch attribution**: Test time-decay or position-based models\n",
+                "5. **Propensity score matching**: Match similar patients who renewed vs. didn't renew, control for confounders\n",
+                "6. **Survival analysis**: Model time-to-renewal with touchpoints as time-varying covariates\n",
+                "\n",
+                "### Long-term (experimentation)\n",
+                "7. **Randomized controlled trial**: Randomly assign patients to receive/not receive specific touchpoints\n",
+                "8. **Holdout testing**: Create control groups that receive no marketing touchpoints\n",
+                "9. **Incrementality testing**: Measure the causal lift of each touchpoint type"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "attribution_by_type",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "touchpoint_type_summary",
+                  "fields": [
+                    {
+                      "name": "total_attributed_represcriptions",
+                      "expression": "`total_attributed_represcriptions`"
+                    },
+                    {
+                      "name": "touchpoint_type",
+                      "expression": "`touchpoint_type`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "description": "Number of patient renewals attributed to each touchpoint type",
+                "title": "Attributed Renewals by Touchpoint Type",
+                "showTitle": true
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "total_attributed_represcriptions",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "touchpoint_type",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 12,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "attribution_details",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "touchpoint_attribution",
+                  "fields": [
+                    {
+                      "name": "touchpoint_type",
+                      "expression": "`touchpoint_type`"
+                    },
+                    {
+                      "name": "touchpoint_channel",
+                      "expression": "`touchpoint_channel`"
+                    },
+                    {
+                      "name": "touchpoint_outcome",
+                      "expression": "`touchpoint_outcome`"
+                    },
+                    {
+                      "name": "attributed_represcriptions",
+                      "expression": "`attributed_represcriptions`"
+                    },
+                    {
+                      "name": "attribution_pct",
+                      "expression": "`attribution_pct`"
+                    },
+                    {
+                      "name": "avg_days_after_rx_start",
+                      "expression": "`avg_days_after_rx_start`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "Detailed Attribution Breakdown",
+                "showTitle": true
+              },
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "touchpoint_type",
+                    "displayName": "Touchpoint"
+                  },
+                  {
+                    "fieldName": "touchpoint_channel",
+                    "displayName": "Channel"
+                  },
+                  {
+                    "fieldName": "touchpoint_outcome",
+                    "displayName": "Outcome"
+                  },
+                  {
+                    "fieldName": "attributed_represcriptions",
+                    "displayName": "Renewals"
+                  },
+                  {
+                    "fieldName": "attribution_pct",
+                    "format": {
+                      "type": "number-plain",
+                      "abbreviation": "none",
+                      "decimalPlaces": {
+                        "type": "exact",
+                        "places": 1
+                      }
+                    },
+                    "displayName": "Attribution %",
+                    "formatTemplate": "{{ @formatted }}%"
+                  },
+                  {
+                    "fieldName": "avg_days_after_rx_start",
+                    "format": {
+                      "type": "number-plain",
+                      "abbreviation": "none",
+                      "decimalPlaces": {
+                        "type": "exact",
+                        "places": 0
+                      }
+                    },
+                    "displayName": "Avg Days to Renewal"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 10,
+            "width": 12,
+            "height": 5
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "canvasBackgroundColor": {
+        "light": "#F8F9FA",
+        "dark": "#1A1D21"
+      },
+      "widgetBackgroundColor": {
+        "light": "#FFFFFF",
+        "dark": "#2D3139"
+      },
+      "fontColor": {
+        "light": "#212121",
+        "dark": "#E0E0E0"
+      },
+      "selectionColor": {
+        "light": "#1E88E5",
+        "dark": "#42A5F5"
+      },
+      "visualizationColors": [
+        "#1E88E5",
+        "#43A047",
+        "#FB8C00",
+        "#E53935",
+        "#8E24AA",
+        "#00ACC1",
+        "#FDD835",
+        "#6D4C41"
+      ],
+      "widgetHeaderAlignment": "LEFT",
+      "fontFamily": "Inter",
+      "widgetPadding": 16,
+      "widgetCornerRadius": 8,
+      "widgetShadow": 10
+    },
+    "applyModeEnabled": false
+  }
+}
